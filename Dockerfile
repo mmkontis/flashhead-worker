@@ -1,7 +1,7 @@
 FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3.10 python3.10-venv python3-pip git ffmpeg libgl1 libglib2.0-0 libsndfile1 curl build-essential \
+    python3.10 python3.10-venv python3-pip git ffmpeg libgl1 libglib2.0-0 libsndfile1 curl build-essential python3.10-dev g++ \
     && rm -rf /var/lib/apt/lists/*
 RUN python3.10 -m pip install --no-cache-dir -U pip
 RUN python3.10 -m pip install --no-cache-dir torch==2.7.1 torchvision==0.22.1 --index-url https://download.pytorch.org/whl/cu128
