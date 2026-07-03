@@ -1,7 +1,10 @@
-name: heartbeat
+name: pulse
 on:
+  push:
+    paths:
+      - '.pulse-trigger'
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 jobs:
   ping:
