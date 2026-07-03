@@ -1,0 +1,37 @@
+name: decay-test
+on: { workflow_dispatch: {} }
+jobs:
+  decay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - name: probe decay curve
+        env: { RPK: "${{ secrets.RUNPOD_API_KEY }}" }
+        run: |
+          EP=bryni2fz7ymgyq
+          IMG=$(base64 -w0 test_face.jpg); AUD=$(base64 -w0 test_1s.wav)
+          probe() {
+            T0=$(date +%s)
+            JID=$(curl -sf -X POST -H "Authorization: Bearer $RPK" -H "Content-Type: application/json" \
+              -d "{\"input\":{\"model_type\":\"lite\",\"image_b64\":\"$IMG\",\"audio_b64\":\"$AUD\"}}" \
+              https://api.runpod.ai/v2/$EP/run | python3 -c "import json,sys;print(json.load(sys.stdin)['id'])")
+            for i in $(seq 1 200); do
+              sleep 4
+              S=$(curl -sf -H "Authorization: Bearer $RPK" https://api.runpod.ai/v2/$EP/status/$JID)
+              ST=$(echo "$S" | python3 -c "import json,sys;print(json.load(sys.stdin)['status'])")
+              [ "$ST" = "COMPLETED" ] || [ "$ST" = "FAILED" ] && break
+            done
+            D=$(echo "$S" | python3 -c "import json,sys;print(round(json.load(sys.stdin).get('delayTime',0)/1000,1))")
+            W=$(( $(date +%s) - T0 ))
+            V="HOT"; [ "${D%.*}" -ge 60 ] 2>/dev/null && V="COLD-EVICTED"
+            echo "RESULT gap=${1}min wall=${W}s delay=${D}s status=$ST verdict=$V"
+          }
+          echo "RESULT gap=0min (baseline probe)"
+          probe 0
+          for GAP in 5 10 20 40 80 160; do
+            echo "sleeping ${GAP}min..."
+            sleep $((GAP * 60))
+            probe $GAP
+          done
+          echo "DECAY CURVE COMPLETE"
