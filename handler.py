@@ -41,7 +41,10 @@ try:
 except Exception as e:
     log(f"eager load failed (lazy fallback): {e}")
 def handler(job):
-    i = job["input"]; mt = i.get("model_type", "lite")
+    i = job["input"]
+    if i.get("ping"):
+        return {"pong": time.time(), "hot": "lite" in _cache}
+    mt = i.get("model_type", "lite")
     log(f"job model={mt}")
     tmp = tempfile.mkdtemp()
     img, aud, out = tmp + "/c.png", tmp + "/a.wav", tmp + "/o.mp4"
