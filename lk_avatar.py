@@ -45,8 +45,10 @@ AVATAR_IDENTITY = "flashhead-avatar"
 class FlashHeadChunkGenerator(VideoGenerator):
     """Drives FlashHead chunk-by-chunk from a live audio buffer."""
 
-    def __init__(self, pipeline) -> None:
+    def __init__(self, pipeline, out_w: int = WIDTH, out_h: int = HEIGHT) -> None:
         self._pipeline = pipeline
+        self._out_w = out_w
+        self._out_h = out_h
         params = get_infer_params()
         self._frame_num = params["frame_num"]  # 33
         self._motion_frames = params["motion_frames_num"]  # 5
@@ -91,7 +93,7 @@ class FlashHeadChunkGenerator(VideoGenerator):
     # -- generation loop ----------------------------------------------------
 
     def _generate_chunk_sync(self, chunk_f32: np.ndarray) -> np.ndarray:
-        """Blocking CUDA work: rolling context -> embedding -> frames [28,H,W,3] u8."""
+        """Blocking CUDA work: rolling context -> embedding -> frames [28,out_h,out_w,3] u8."""
         self._audio_ctx.extend(chunk_f32.tolist())
         audio_array = np.array(self._audio_ctx)
         emb = get_audio_embedding(
@@ -99,6 +101,14 @@ class FlashHeadChunkGenerator(VideoGenerator):
         )
         video = run_pipeline(self._pipeline, emb)
         video = video[self._motion_frames :]
+        if self._out_w != WIDTH or self._out_h != HEIGHT:
+            # un-stretch on GPU: the model works on a 512² (stretched) face,
+            # published frames go back to the source aspect (e.g. 9:16)
+            import torch.nn.functional as F
+
+            v = video.permute(0, 3, 1, 2)  # [T,C,H,W]
+            v = F.interpolate(v, size=(self._out_h, self._out_w), mode="bilinear", align_corners=False)
+            video = v.permute(0, 2, 3, 1).contiguous()
         return video.cpu().numpy().astype(np.uint8)
 
     async def _stream(self):
@@ -144,7 +154,7 @@ class FlashHeadChunkGenerator(VideoGenerator):
                 if self._closed or self._interrupted:
                     break
                 yield rtc.VideoFrame(
-                    width=WIDTH, height=HEIGHT, type=rtc.VideoBufferType.RGB24,
+                    width=self._out_w, height=self._out_h, type=rtc.VideoBufferType.RGB24,
                     data=frames[i].tobytes(),
                 )
                 if speaking:
@@ -203,13 +213,15 @@ async def run_avatar_session(job_input: dict, pipeline) -> dict:
     logger.info(f"connected to room {room.name} as {room.local_participant.identity}")
 
     audio_recv = DataStreamAudioReceiver(room, sender_identity=agent_identity)
-    generator = FlashHeadChunkGenerator(pipeline)
+    out_w = max(256, min(int(job_input.get("output_width", WIDTH)) // 2 * 2, 1024))
+    out_h = max(256, min(int(job_input.get("output_height", HEIGHT)) // 2 * 2, 1024))
+    generator = FlashHeadChunkGenerator(pipeline, out_w=out_w, out_h=out_h)
     runner = AvatarRunner(
         room=room,
         audio_recv=audio_recv,
         video_gen=generator,
         options=AvatarOptions(
-            video_width=WIDTH, video_height=HEIGHT, video_fps=FPS,
+            video_width=out_w, video_height=out_h, video_fps=FPS,
             audio_sample_rate=SAMPLE_RATE, audio_channels=1,
         ),
     )
