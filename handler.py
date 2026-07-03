@@ -41,6 +41,24 @@ try:
 except Exception as e:
     log(f"eager load failed (lazy fallback): {e}")
 def handler(job):
+    i = job["input"]
+    if i.get("mode") == "stream":
+        return handler_stream(job)
+    return handler_batch(job)
+
+def handler_stream(job):
+    """Live avatar session: join a LiveKit room and stream FlashHead chunks."""
+    import asyncio
+    from lk_avatar import run_avatar_session
+    i = job["input"]; mt = i.get("model_type", "lite")
+    log(f"stream job model={mt} room-token len={len(i.get('livekit_token', ''))}")
+    pipeline = _cached(world_size=1, ckpt_dir=LOCAL_MODELS + "/SoulX-FlashHead-1_3B",
+                       wav2vec_dir=LOCAL_MODELS + "/wav2vec2-base-960h", model_type=mt)
+    stats = asyncio.run(run_avatar_session(i, pipeline))
+    return {"mode": "stream", "model_type": mt,
+            "load_s": _cache.get(mt + "_load_s", 0), **stats}
+
+def handler_batch(job):
     i = job["input"]; mt = i.get("model_type", "lite")
     log(f"job model={mt}")
     tmp = tempfile.mkdtemp()

@@ -1,5 +1,5 @@
 name: build
-on: { push: { branches: [main] }, workflow_dispatch: {} }
+on: { push: { branches: [main, master] }, workflow_dispatch: {} }
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -13,5 +13,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/mmkontis/flashhead-worker:latest
+          tags: |
+            ghcr.io/mmkontis/flashhead-worker:latest
+            ghcr.io/mmkontis/flashhead-worker:${{ github.sha }}
           platforms: linux/amd64

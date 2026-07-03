@@ -17,3 +17,6 @@ xformers==0.0.31
 librosa
 mediapipe==0.10.9
 runpod
+
+# LiveKit streaming avatar mode (worker joins the room, lk_avatar.py)
+livekit-agents~=1.2.18

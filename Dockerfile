@@ -12,6 +12,6 @@ RUN python3.10 -m pip install --no-cache-dir \
  || python3.10 -m pip install --no-cache-dir \
     https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.0.post2/flash_attn-2.8.0.post2+cu12torch2.7cxx11abiFALSE-cp310-cp310-linux_x86_64.whl
 RUN git clone --depth 1 https://github.com/Soul-AILab/SoulX-FlashHead.git /app/SoulX-FlashHead
-COPY handler.py /app/handler.py
+COPY handler.py lk_avatar.py /app/
 WORKDIR /app/SoulX-FlashHead
 CMD ["python3.10", "-u", "/app/handler.py"]
