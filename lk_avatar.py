@@ -110,6 +110,11 @@ class FlashHeadChunkGenerator(VideoGenerator):
                 self._interrupted = False
                 yield AudioSegmentEnd()
 
+            # segment end that arrived after the buffer already drained
+            if self._segment_end_pending and not self._buffer:
+                self._segment_end_pending = False
+                yield AudioSegmentEnd()
+
             # take up to one chunk of pending speech, pad the tail with silence
             speaking = len(self._buffer) > 0
             take = min(len(self._buffer), chunk_bytes)
@@ -134,7 +139,8 @@ class FlashHeadChunkGenerator(VideoGenerator):
             if speaking:
                 logger.info(f"chunk: {gen_s:.2f}s for {self._slice_len / FPS:.2f}s video (speech)")
 
-            for i in range(self._slice_len):
+            n_frames = min(self._slice_len, frames.shape[0])
+            for i in range(n_frames):
                 if self._closed or self._interrupted:
                     break
                 yield rtc.VideoFrame(

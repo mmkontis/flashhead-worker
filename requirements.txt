@@ -15,7 +15,8 @@ pyloudnorm
 decord
 xformers==0.0.31
 librosa
-mediapipe==0.10.9
+# mediapipe removed: pins protobuf<4 which conflicts with livekit (protobuf>=5).
+# Only needed for use_face_crop=True; the import is patched to be optional in the Dockerfile.
 runpod
 
 # LiveKit streaming avatar mode (worker joins the room, lk_avatar.py)
