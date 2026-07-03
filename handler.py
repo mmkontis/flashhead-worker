@@ -52,7 +52,7 @@ def handler(job):
     open(aud, "wb").write(base64.b64decode(i["audio_b64"]))
     args = argparse.Namespace(ckpt_dir=LOCAL_MODELS+"/SoulX-FlashHead-1_3B", wav2vec_dir=LOCAL_MODELS+"/wav2vec2-base-960h",
         model_type=mt, save_file=out, base_seed=int(i.get("seed", 42)), cond_image=img, cond_image_dir=None,
-        audio_path=aud, audio_encode_mode="stream", use_face_crop=False)
+        audio_path=aud, audio_encode_mode=i.get("audio_encode_mode", "once"), use_face_crop=False)
     t0 = time.time(); buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         gv.generate(args)
