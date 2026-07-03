@@ -1,6 +1,9 @@
-name: decay-test
+name: probe
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.probe-trigger'
 jobs:
   decay:
     runs-on: ubuntu-latest
